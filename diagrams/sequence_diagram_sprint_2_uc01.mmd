@@ -1,0 +1,37 @@
+sequenceDiagram
+    actor Senior as Sênior
+    participant ActivityBoard@{ "type" : "boundary" } as Mural de atividades
+    participant ActivityManager as Gerenciador de atividades
+    participant Queue@{ "type" : "queue" } as Lista de espera
+
+    Senior ->> ActivityBoard : Abre lista de atividades disponíveis
+    ActivityBoard ->> ActivityManager : Requisita lista de atividades disponíveis
+    ActivityManager ->> ActivityBoard : Lista de atividades disponíveis
+    ActivityBoard ->> Senior : Exibe atividades disponíveis
+
+    Senior ->> ActivityBoard : Seleciona uma atividade
+
+    alt Há vagas na atividade
+        ActivityBoard ->> Senior : Exibe detalhes da atividade<br/>com opção de "Realizar Matrícula"
+        Senior ->> ActivityBoard : Clica em "Realizar Matrícula"
+
+        alt Usuário já cadastrado em outra atividade no mesmo horário
+            ActivityBoard ->> Senior : Exibe mensagem informando conflito de horário e pede confirmação antes de prosseguir
+            Senior ->> ActivityBoard : Confirma que quer se matricular
+        end
+
+        ActivityBoard ->> ActivityManager : Requisita matrícula do usuário na atividade
+        ActivityManager ->> ActivityBoard : Resultado do processo de matrícula
+        ActivityBoard ->> Senior : Exibe confirmação visual/sonora (RNF03)
+
+    else Não há vagas na atividade
+        ActivityBoard ->> Senior : Exibe detalhes da atividade e informa a falta de vagas<br/>com opção de "Entrar na Lista de Espera"
+        Senior ->> ActivityBoard : Clica em "Entrar na Lista de Espera"
+        ActivityBoard ->> ActivityManager : Requisita inserção do usuário na lista de<br/>espera da atividade
+        ActivityManager ->> Queue : Insere usuário na fila de espera
+        Queue ->> ActivityManager : Resultado do processo de inserção na lista de espera
+        ActivityManager ->> ActivityBoard : Resultado do processo de inserção na lista de espera
+        ActivityBoard ->> Senior : Exibe resultado do processo de inserção na lista de espera
+    end
+
+    ActivityBoard ->> Senior : Retorna para o Mural de Atividades

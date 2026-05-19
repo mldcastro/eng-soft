@@ -1,0 +1,26 @@
+[project]
+name = "elder-app"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+
+requires-python = ">=3.14, <3.15"
+dependencies = ["streamlit >=1.57.0, <2", "typing-extensions >=4.15, <5"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest >=9.0.3, <10",
+    "ruff >=0.15.13, <0.16",
+    "pyright >=1.1.409, <2",
+]
+
+[tool.uv]
+package = true
+
+[tool.pyright]
+typeCheckingMode = "standard"  # https://microsoft.github.io/pyright/#/configuration?id=diagnostic-settings-defaults
+
+deprecateTypingAliases = true
+
+[project.scripts]
+mermaid = "elder_app.mermaid:main"
