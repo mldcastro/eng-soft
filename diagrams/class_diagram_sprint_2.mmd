@@ -1,0 +1,38 @@
+classDiagram
+    ActivityBoard
+    ActivityManager
+    WaitingQueue
+
+    ActivityManager "1" -- "1..N" ActivityBoard
+    ActivityManager "1" -- "1..N" WaitingQueue
+
+    class ActivityBoard {
+      -ActivityManager activity_manager
+
+      +show() None
+      +hide() None
+      +get_available_activities() list~Activity~
+      +display_available_activities() None
+      +enrol(User user, Activity activity) bool
+      +add_to_waiting_queue(User user, Activity activity) bool
+
+      -display_error_message(str message) None
+    }
+
+    class ActivityManager {
+      -dict~Activity; WaitingQueue~User~~ waiting_queue
+
+      +get_available_activities() list~Activity~
+      +enrol(User user, Activity activity) bool
+      +add_to_waiting_queue(User user, Activity activity) bool
+    }
+
+    class WaitingQueue~T~ {
+      +init() None
+      +push(T element) None
+      +pop(T element) None
+      +is_empty() bool
+      +is_full() bool
+      +destroy() None
+    }
+    
