@@ -11,6 +11,11 @@ Para rodar os códigos deste repositório, você precisa instalar as seguintes f
 - [`uv`](https://docs.astral.sh/uv/getting-started/installation/#installing-uv) == 0.11.15.
   - Esta ferramente é usada para gerenciar o ambiente Python.
 
+## Instalando o ambiente Python
+
+Após instalar `uv`, basta rodar `uv sync` no seu terminal, e os pacotes necessários
+serão instalados no ambiente.
+
 ## Convertendo os arquivos `.mmd` em imagens
 
 Você pode usar tanto o script em Python, quanto a CLI oficial do `mermaid`.
