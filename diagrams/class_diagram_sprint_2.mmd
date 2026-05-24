@@ -6,40 +6,90 @@ config:
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 classDiagram
+    User
+    Senior
+    Tutor
+    Activity
     ActivityBoard
     ActivityManager
-    WaitingQueue
+    Queue~Senior~
 
-    ActivityManager "1" -- "1..N" ActivityBoard
-    ActivityManager "1" -- "1..N" WaitingQueue
+    %% Senior e Tutor HERDAM de User.
+    User <|-- Senior
+    User <|-- Tutor
+
+    %% Senior e Tutor possuem ambos uma relação de ASSOCIAÇÃO mútua
+    %% com Activity.
+    Senior "0..N" <--> "0..N" Activity
+    Tutor "0..N" <--> "1" Activity
+
+    %% Tanto ActivityBoard quanto ActivityManager possuem uma relação
+    %% de DEPENDÊNCIA com as classes Senior e Activity, porque nenhuma
+    %% delas guarda uma referência permanente a estes objetos, apenas
+    %% necessita pontualmente deles.
+    ActivityBoard ..> Senior
+    ActivityManager ..> Senior
+    ActivityBoard ..> Activity
+    ActivityManager ..> Activity
+
+    %% ActivityBoard possui uma relação de ASSOCIAÇÃO com ActivityManager,
+    %% pois não gerencia o tempo de vida de ActivityManager, mas sabe de
+    %% sua existência e delega as requisições de negócio para ele.
+    ActivityBoard "1..N" --> "1" ActivityManager
+
+    %% ActivityManager possui uma relação de COMPOSIÇÃO com Queue,
+    %% pois, se ActivityManager for destruído, Queue também é.
+    ActivityManager "1" *-- "0..N" Queue~Senior~
+
+    class User {
+      -name: str
+      -age: int
+      -email_address: str
+      -cellphone_number: str
+    }
+
+    class Senior {
+      -enrolled: list[Activity]
+    }
+
+    class Tutor {
+      -assigned: list[Activity]
+    }
+
+    class Activity {
+      -name: str
+      -total_spots: int
+      -remaining_spots: int
+      -participants: list[Senior]
+      -tutor: Tutor
+    }
 
     class ActivityBoard {
-      -ActivityManager activity_manager
+      -activity_manager: ActivityManager
 
       +show() None
       +hide() None
-      +get_available_activities() list~Activity~
-      +display_available_activities() None
-      +enrol(User user, Activity activity) bool
-      +add_to_waiting_queue(User user, Activity activity) bool
+      +get_available_activities() list[Activity]
+      +handle_show_available_activities_click() None
+      +handle_enroll_click(senior: Senior, activity: Activity) bool
+      +handle_enter_queue_click(senior: Senior, activity: Activity) bool
 
-      -display_error_message(str message) None
+      -display_error_message(message str) None
     }
 
     class ActivityManager {
-      -dict~Activity; WaitingQueue~User~~ waiting_queue
+      -queue_map: dict[Activity, Queue[Senior]]
 
-      +get_available_activities() list~Activity~
-      +enrol(User user, Activity activity) bool
-      +add_to_waiting_queue(User user, Activity activity) bool
+      +get_available_activities() list[Activity]
+      +enroll(senior: Senior, activity: Activity) bool
+      +add_to_queue(senior: Senior, activity: Activity) bool
     }
 
-    class WaitingQueue~T~ {
+    class Queue~Senior~ {
       +init() None
-      +push(T element) None
-      +pop(T element) None
+      +push(element: Senior) None
+      +pop(element: Senior) None
       +is_empty() bool
       +is_full() bool
       +destroy() None
     }
-    
