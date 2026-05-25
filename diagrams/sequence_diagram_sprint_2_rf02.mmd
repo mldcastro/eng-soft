@@ -8,7 +8,7 @@ sequenceDiagram
     create participant ConversationView@{ "type" : "boundary" } as Visualização de conversa
 
     participant ChatManager as Gerenciador de Conversas
-    participant ChatDatabase as Base de Dados de Conversas<br/>(Local ou Remota)
+    participant ChatDatabase@{ "type" : "database" } as Base de Dados de Conversas
     participant CommunicationManager as Gerenciador de Comunicação
 
     ChatTab ->> ConversationView : Abre visualização da conversa<br/>com o usuário selecionado
