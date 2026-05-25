@@ -1,0 +1,32 @@
+flowchart TD
+
+    A([Início])
+
+    B[Moderador acessa o sistema]
+
+    C[Moderador acessa uma sessão]
+
+    D{Entrar em outra sessão simultânea?}
+
+    E[Moderador acessa outra sessão simultâneamente]
+
+    F[Identifica pessoa causando problemas]
+
+    G[Aciona comando de remoção]
+
+    H[Sistema processa a remoção]
+
+    I([Fim])
+
+    A --> B
+    B --> C
+    C --> D
+
+    D -- Sim --> E
+    E --> F
+
+    D -- Não --> F
+
+    F --> G
+    G --> H
+    H --> I

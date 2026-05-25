@@ -1,0 +1,34 @@
+flowchart TD
+
+    A([Início])
+    
+    B[Tutor acessa a opção<br/>Cadastrar Nova Atividade]
+
+    C[Sistema exibe formulário<br/>de cadastro]
+
+    D[Tutor insere os dados<br/>da atividade]
+    
+    E{Dados essenciais<br/>preenchidos?}
+    
+    F[Exibir confirmação visual<br/>ou sonora de erro]
+    
+    G[Tutor confirma<br/>o cadastro]
+
+    H[Sistema registra<br/>a atividade]
+    
+    I[Sistema exibe a atividade<br/>no Mural de Atividades]
+    
+    J([Fim])
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+
+    E -- Não --> F
+    F --> D
+    
+    E -- Sim --> G
+    G --> H
+    H --> I
+    I --> J

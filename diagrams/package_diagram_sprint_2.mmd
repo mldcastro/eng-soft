@@ -1,0 +1,45 @@
+---
+config:
+  layout: elk
+  elk:
+    mergeEdges: false
+    nodePlacementStrategy: LINEAR_SEGMENTS
+---
+
+flowchart TB
+
+  Auth["<<package>>\nAutenticação"]
+
+  Users["<<package>>\nGestão de Usuários"]
+
+  Activities["<<package>>\nGestão de Atividades"]
+  
+  Chat["<<package>>\nComunicação Social"]
+  
+  Moderation["<<package>>\nModeração"]
+  
+  Notify["<<package>>\nNotificações e Feedback"]
+  
+  Infra["<<package>>\nInfraestrutura"]
+  
+  Users --> Auth
+  Activities --> Auth
+  Chat --> Auth
+  
+  Activities --> Users
+  Chat --> Users
+  
+  Moderation --> Users
+  Moderation --> Chat
+  Moderation --> Activities
+  
+  Activities --> Notify
+  Chat --> Notify
+  
+  Users --> Infra
+  Activities --> Infra
+  Chat --> Infra
+  Notify --> Infra
+  
+  classDef package fill:#f5f0ff,stroke:#7c5cff,stroke-width:1.5,color:#222;
+  class Auth,Users,Activities,Chat,Moderation,Notify,Infra package;
