@@ -73,10 +73,12 @@ classDiagram
       -tutor: Tutor
     }
 
+    note for ActivityBoard "O atributo 'new_activity' existe apenas se 'user' for uma instância de 'Tutor'."
     class ActivityBoard {
       -activity_manager: ActivityManager
       -user: User
       -selected_activity: Activity | None
+      -new_activity: Activity | None
 
       +show() None
       +hide() None
@@ -84,8 +86,11 @@ classDiagram
       +handle_show_available_activities_click() None
       +handle_enroll_click() bool
       +handle_enter_queue_click() bool
+      +handle_register_new_activity_click() None
+      +handle_confirm_register_new_activity_click() bool
 
-      -display_error_message(message str) None
+      -display_error_message(message: str) None
+      -display_new_activity_form() None
     }
 
     class ActivityManager {
@@ -94,6 +99,7 @@ classDiagram
       +get_available_activities() list[Activity]
       +enroll(senior: Senior, activity: Activity) bool
       +add_to_queue(senior: Senior, activity: Activity) bool
+      +register_new_activity(tutor: Tutor, activity: Activity) bool
     }
 
     class Queue~Senior~ {
