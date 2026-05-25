@@ -1,0 +1,21 @@
+sequenceDiagram
+    actor Tutor
+    participant ActivityBoard@{ "type" : "boundary" } as Mural de atividades
+    participant ActivityManager as Gerenciador de atividades
+
+    Tutor ->> ActivityBoard : Abre opção de cadastrar nova atividade
+    ActivityBoard -->> Tutor : Exibe formulário de cadastro de atividade
+
+    loop Enquanto formulário for preenchido com erros
+        Tutor ->> ActivityBoard : Preenche formulário
+
+        alt Formulário preenchido com erros
+            ActivityBoard -->> Tutor : Exibe mensagem informando erros
+        end
+    end
+
+    ActivityBoard -->> Tutor : Exibe tela para confirmar registro da atividade
+    Tutor ->> ActivityBoard : Confirma registro da atividade
+    ActivityBoard ->> ActivityManager : Requisita registro da atividade
+    ActivityManager -->> ActivityBoard : Registra atividade no Mural de Atividades
+    ActivityBoard -->> Tutor : Confirma registro da nova atividade e exibe-a no Mural de Atividades
