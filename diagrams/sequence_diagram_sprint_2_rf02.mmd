@@ -1,0 +1,48 @@
+sequenceDiagram
+    actor User as Usuário
+    participant ChatTab@{ "type" : "boundary" } as Aba de Conversas
+
+    activate ChatTab
+    User ->> ChatTab : O usuário seleciona alguém para mandar mensagem
+
+    create participant ConversationView@{ "type" : "boundary" } as Visualização de conversa
+
+    participant ChatManager as Gerenciador de Conversas
+    participant ChatDatabase as Base de Dados de Conversas<br/>(Local ou Remota)
+    participant CommunicationManager as Gerenciador de Comunicação
+
+    ChatTab ->> ConversationView : Abre visualização da conversa<br/>com o usuário selecionado
+    deactivate ChatTab
+
+    activate ConversationView
+    ConversationView ->> ChatManager : Requisita o histórico de conversa com o usuário selecionado
+    deactivate ConversationView
+
+    activate ChatManager
+    ChatManager ->> ChatDatabase : Seleciona o histórico de conversa com o usuário selecionado
+
+    activate ChatDatabase
+    ChatDatabase -->> ChatManager : Histórico de conversa 
+    deactivate ChatDatabase
+
+    ChatManager -->> ConversationView : Histórico de conversa
+    deactivate ChatManager
+
+    activate ConversationView
+    ConversationView -->> User : Exibe o histórico de conversa
+    deactivate ConversationView
+
+    User ->> ConversationView : Redige uma mensagem (textual, sonora ou visual)<br/>e clica em 'Enviar'
+
+    activate ConversationView
+    ConversationView ->> CommunicationManager : Requisita o envio da mensagem<br/>para o usuário selecionado
+
+    activate CommunicationManager
+    CommunicationManager -->> ConversationView : Resultado do envio
+    deactivate CommunicationManager
+
+    ConversationView -->> User : Emissão de som indicando que a mensagem foi enviada
+    deactivate ConversationView
+
+    destroy ConversationView
+    ChatTab -x ConversationView : Usuário sai da visualização da conversa e volta para a Aba de Conversas
