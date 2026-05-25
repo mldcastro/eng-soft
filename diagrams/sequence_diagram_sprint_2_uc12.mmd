@@ -1,0 +1,26 @@
+sequenceDiagram
+    actor Tutor
+    participant TutorBoard@{ "type" : "boundary" } as Painel do Tutor
+    participant ActivityManager as Gerenciador de Atividades
+    participant CommunicationManager as Gerenciador de Comunicação
+
+    Tutor ->> TutorBoard : Abre opção 'Relatórios de engajamento' e seleciona uma atividade
+    TutorBoard ->> ActivityManager : Requisita um relatório da atividade selecionada
+    ActivityManager -->> TutorBoard : Relatório
+    TutorBoard -->> Tutor : Exibe o relatório contendo taxa de presença e último login de cada sênior matriculado na atividade selecionada
+    Tutor ->> TutorBoard : Seleciona os seniores com a menor taxa de frequência
+    Tutor ->> TutorBoard : Clica na opção 'Enviar lembrete de participação'
+    TutorBoard -->> Tutor : Exibe uma tela para a composição da mensagem
+
+    loop Enquanto mensagem for vazia
+        Tutor ->> TutorBoard : Redige a mensagem e clica na opção 'Enviar'
+
+        alt Mensagem vazia
+            TutorBoard -->> Tutor : Exibe mensagem de erro indicando que a mensagem não pode ser vazia
+        end
+    end
+
+    TutorBoard ->> CommunicationManager : Requisita envio da mensagem
+    CommunicationManager -->> TutorBoard : Resultado do envio da mensagem
+    TutorBoard -->> Tutor : Exibe mensagem confirmando envio
+
