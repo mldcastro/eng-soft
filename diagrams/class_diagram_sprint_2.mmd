@@ -9,10 +9,19 @@ classDiagram
     User
     Senior
     Tutor
+  
     Activity
     ActivityBoard
+    TutorBoard
     ActivityManager
     Queue~Senior~
+
+    ChatTab
+    ConversationView
+    ConversationManager
+    ChatDatabase
+    CommunicationManager
+
 
     %% Senior e Tutor HERDAM de User.
     User <|-- Senior
@@ -66,13 +75,15 @@ classDiagram
 
     class ActivityBoard {
       -activity_manager: ActivityManager
+      -user: User
+      -selected_activity: Activity | None
 
       +show() None
       +hide() None
       +get_available_activities() list[Activity]
       +handle_show_available_activities_click() None
-      +handle_enroll_click(senior: Senior, activity: Activity) bool
-      +handle_enter_queue_click(senior: Senior, activity: Activity) bool
+      +handle_enroll_click() bool
+      +handle_enter_queue_click() bool
 
       -display_error_message(message str) None
     }
