@@ -9,36 +9,42 @@ classDiagram
     User
     Senior
     Tutor
+
     Activity
+    ActivityReport
     ActivityBoard
+    TutorBoard
     ActivityManager
     Queue~Senior~
 
-    %% Senior e Tutor HERDAM de User.
+    ChatTab
+    ConversationView
+    ConversationManager
+    ChatDatabase
+
+    CommunicationManager
+
+
+    %% HERANÇA
     User <|-- Senior
     User <|-- Tutor
 
-    %% Senior e Tutor possuem ambos uma relação de ASSOCIAÇÃO mútua
-    %% com Activity.
+    %% ASSOCIAÇÃO
     Senior "0..N" <--> "0..N" Activity
     Tutor "0..N" <--> "1" Activity
+    ActivityBoard "1..N" --> "1" ActivityManager
+    TutorBoard "1..N" --> "1" ActivityManager
+    TutorBoard "1..N" --> "1" CommunicationManager
 
-    %% Tanto ActivityBoard quanto ActivityManager possuem uma relação
-    %% de DEPENDÊNCIA com as classes Senior e Activity, porque nenhuma
-    %% delas guarda uma referência permanente a estes objetos, apenas
-    %% necessita pontualmente deles.
+    %% DEPENDÊNCIA
     ActivityBoard ..> Senior
     ActivityManager ..> Senior
     ActivityBoard ..> Activity
     ActivityManager ..> Activity
+    ActivityManager ..> ActivityReport
+    TutorBoard ..> ActivityReport
 
-    %% ActivityBoard possui uma relação de ASSOCIAÇÃO com ActivityManager,
-    %% pois não gerencia o tempo de vida de ActivityManager, mas sabe de
-    %% sua existência e delega as requisições de negócio para ele.
-    ActivityBoard "1..N" --> "1" ActivityManager
-
-    %% ActivityManager possui uma relação de COMPOSIÇÃO com Queue,
-    %% pois, se ActivityManager for destruído, Queue também é.
+    %% COMPOSIÇÃO
     ActivityManager "1" *-- "0..N" Queue~Senior~
 
     class User {
@@ -64,17 +70,39 @@ classDiagram
       -tutor: Tutor
     }
 
+    class ActivityReport
+
+    note for ActivityBoard "O atributo 'new_activity' existe apenas se 'user' for uma instância de 'Tutor'."
     class ActivityBoard {
       -activity_manager: ActivityManager
+      -user: User
+      -selected_activity: Activity | None
+      -new_activity: Activity | None
 
       +show() None
       +hide() None
       +get_available_activities() list[Activity]
       +handle_show_available_activities_click() None
-      +handle_enroll_click(senior: Senior, activity: Activity) bool
-      +handle_enter_queue_click(senior: Senior, activity: Activity) bool
+      +handle_enroll_click() bool
+      +handle_enter_queue_click() bool
+      +handle_register_new_activity_click() None
+      +handle_confirm_register_new_activity_click() bool
 
-      -display_error_message(message str) None
+      -display_error_message(message: str) None
+      -display_new_activity_form() None
+    }
+
+    class TutorBoard {
+      -activity_manager: ActivityManager
+      -communication_manager: CommunicationManager
+      -tutor: Tutor
+      -selected_activity: Activity | None
+
+      +get_activity_report() ActivityReport
+      +handle_show_activity_presence_report_click() None
+      +handle_send_attendance_reminder_click() bool
+
+      -display_error_message(message: str) None
     }
 
     class ActivityManager {
@@ -83,6 +111,8 @@ classDiagram
       +get_available_activities() list[Activity]
       +enroll(senior: Senior, activity: Activity) bool
       +add_to_queue(senior: Senior, activity: Activity) bool
+      +register_new_activity(tutor: Tutor, activity: Activity) bool
+      +make_activity_report(activity: Activity) ActivityReport
     }
 
     class Queue~Senior~ {
@@ -93,3 +123,5 @@ classDiagram
       +is_full() bool
       +destroy() None
     }
+
+    class CommunicationManager

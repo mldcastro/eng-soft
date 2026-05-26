@@ -2,6 +2,7 @@ sequenceDiagram
     actor Tutor
     participant ActivityBoard@{ "type" : "boundary" } as Mural de atividades
     participant ActivityManager as Gerenciador de atividades
+    participant ActivityDatabase@{ "type" : "database" } as Base de Dados de Atividades
 
     Tutor ->> ActivityBoard : Abre opção de cadastrar nova atividade
     ActivityBoard -->> Tutor : Exibe formulário de cadastro de atividade
@@ -17,5 +18,7 @@ sequenceDiagram
     ActivityBoard -->> Tutor : Exibe tela para confirmar registro da atividade
     Tutor ->> ActivityBoard : Confirma registro da atividade
     ActivityBoard ->> ActivityManager : Requisita registro da atividade
+    ActivityManager ->> ActivityDatabase : Salva atividade
+    ActivityDatabase -->> ActivityManager : Resultado da operação de salvamento
     ActivityManager -->> ActivityBoard : Registra atividade no Mural de Atividades
     ActivityBoard -->> Tutor : Confirma registro da nova atividade e exibe-a no Mural de Atividades
