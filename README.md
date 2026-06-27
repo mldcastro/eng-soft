@@ -34,3 +34,9 @@ mmdc -i some_diagram_code.mmd -o some_diagram_code.png
 
 > [!note]
 > A CLI do `mermaid` tem o nome de `mmdc` no terminal.
+
+## MVP
+
+```bash
+uv run streamlit run  mvp_streamlit/app.py
+```
