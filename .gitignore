@@ -10,3 +10,14 @@ wheels/
 .venv
 
 mermaid-filter.err
+
+# App Mobile (Vite/React) – App_Mobile_Figma/
+App_Mobile_Figma/node_modules/
+App_Mobile_Figma/dist/
+App_Mobile_Figma/dist-ssr/
+App_Mobile_Figma/.vite/
+App_Mobile_Figma/*.local
+App_Mobile_Figma/.env
+App_Mobile_Figma/.env.*
+App_Mobile_Figma/CLAUDE.md
+App_Mobile_Figma/.claude/
