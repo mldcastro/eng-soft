@@ -10,3 +10,7 @@ wheels/
 .venv
 
 mermaid-filter.err
+
+# Banco de dados SQLite gerado em runtime (recriado/semeado na 1ª execução)
+data/
+*.db

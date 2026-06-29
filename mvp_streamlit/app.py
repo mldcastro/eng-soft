@@ -3,16 +3,25 @@ MVP — Plataforma Comunitária para Adultos 65+
 Sprint 4 — Implementação em Streamlit
 INF01127 — Engenharia de Software | UFRGS 2025/1
 
-Arquitetura (seção 1.3): a integração entre módulos usa o Session State nativo
-do Streamlit (st.session_state). No login, o Módulo Base injeta na sessão global
-as variáveis `user_id` e `user_role` ('senior' | 'tutor'). Cada view consome
-essas variáveis para rotear o usuário para a interface correta — por exemplo,
-"Realizar Matrícula" só aparece para 'senior'; "Criar Atividade" só para 'tutor'
-(controle de acesso previsto nos UC21/UC23).
+Camada de Apresentação (View) do MVC simplificado descrito na seção 1.2.
+Esta camada APENAS renderiza componentes e captura eventos: é proibida de
+acessar o banco de dados diretamente. Toda ação do usuário é repassada à
+camada de Lógica de Negócio (pacote `elder_app.services`, exposto via
+`elder_app.build_backend()`), que por sua vez delega a persistência à camada
+de Acesso a Dados (`elder_app.repositories`, único lugar com SQL/SQLite).
+
+Integração (seção 1.3): no login, o backend cria/recupera o usuário e a View
+injeta na sessão global as variáveis `user_id` e `user_role` ('senior' |
+'tutor'). Cada view consome essas variáveis para rotear o usuário para a
+interface correta — "Realizar Matrícula" só aparece para 'senior'; "Criar
+Atividade" só para 'tutor' (controle de acesso previsto nos UC21/UC23).
 """
 
 import streamlit as st
 from datetime import datetime
+
+from elder_app import build_backend
+from elder_app.models import User
 
 # ---------------------------------------------------------------------------
 # Configuração da página
@@ -23,6 +32,16 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="collapsed",
 )
+
+# ---------------------------------------------------------------------------
+# Backend — instância única (cache_resource) compartilhada entre re-execuções.
+# A View enxerga somente os serviços de negócio; nunca repositórios ou SQL.
+# ---------------------------------------------------------------------------
+@st.cache_resource
+def get_backend():
+    return build_backend()
+
+backend = get_backend()
 
 # ---------------------------------------------------------------------------
 # Helper crítico: o markdown do Streamlit interpreta linhas indentadas (4+
@@ -116,6 +135,7 @@ st.markdown(f"""
   div[data-testid="stTextInput"] label,
   div[data-testid="stTextArea"] label,
   div[data-testid="stSelectbox"] label,
+  div[data-testid="stNumberInput"] label,
   div[data-testid="stRadio"] label,
   div[data-testid="stSlider"] label {{
     font-size: 1rem !important;
@@ -136,27 +156,9 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
-# Dados mockados (sementes — simulam o banco de dados)
+# Emoji/cor padrão por tipo de atividade (decisão de apresentação — fica na
+# View; o backend apenas persiste os valores escolhidos).
 # ---------------------------------------------------------------------------
-SEED_ACTIVITIES = [
-    {"id": "1", "title": "Yoga na Cadeira", "tutor": "Prof. Ana Maria",
-     "time": "Hoje, 15:00", "location": "Ao vivo (Vídeo)", "type": "Exercício Físico",
-     "spots": "Vagas abertas", "emoji": "🧘", "color": "#2563EB",
-     "description": ("Uma aula leve e relaxante feita especialmente para você, "
-                     "sem precisar levantar da cadeira. Ótimo para circulação e bem-estar.")},
-    {"id": "2", "title": "Roda de Conversa: Livros", "tutor": "Mediador Carlos",
-     "time": "Amanhã, 10:00", "location": "Sala de Chat", "type": "Social",
-     "spots": "Lista de Espera", "emoji": "📚", "color": "#7C3AED",
-     "description": ("Vamos conversar sobre nossas leituras favoritas e conhecer novos "
-                     "amigos. Traga seu cafezinho!")},
-    {"id": "3", "title": "Pintura com Aquarela", "tutor": "Profa. Beatriz",
-     "time": "Sexta, 14:00", "location": "Ao vivo (Vídeo)", "type": "Arte",
-     "spots": "Vagas abertas", "emoji": "🎨", "color": "#DC2626",
-     "description": ("Aprenda técnicas simples de aquarela em um ambiente acolhedor. "
-                     "Nenhuma experiência anterior necessária — só boa vontade!")},
-]
-
-# Emoji/cor padrão por tipo de atividade (usado ao criar novas atividades)
 TYPE_STYLE = {
     "Exercício Físico": ("🧘", "#2563EB"),
     "Social":           ("📚", "#7C3AED"),
@@ -165,54 +167,24 @@ TYPE_STYLE = {
     "Conteúdo":         ("📖", "#16A34A"),
 }
 
-CHATS = [
-    {"id": "g1", "name": "Turma de Yoga",      "type": "group",
-     "last": "Ana: Nos vemos às 15h!",   "time": "10:30", "unread": 2, "emoji": "👥"},
-    {"id": "u1", "name": "Dona Maria",         "type": "private",
-     "last": "Você: Que foto linda!",    "time": "Ontem", "unread": 0, "emoji": "👩"},
-    {"id": "m1", "name": "Suporte / Moderador","type": "support",
-     "last": "Moderador: Posso ajudar?", "time": "Ontem", "unread": 0, "emoji": "🛡️"},
-]
-
-INITIAL_MESSAGES = {
-    "g1": [
-        {"text": "Olá pessoal!", "sender": "other", "name": "Ana", "time": "10:00"},
-        {"text": "Oi! Tudo bem com vocês?", "sender": "me", "name": "Você", "time": "10:05"},
-        {"text": "Prontos para a aula de hoje?", "sender": "other", "name": "Ana", "time": "10:30"},
-        {"text": "Claro! Já estou animada 😊", "sender": "me", "name": "Você", "time": "10:31"},
-        {"text": "Nos encontramos às 15h. 🧘", "sender": "other", "name": "Ana", "time": "10:32"},
-    ],
-    "u1": [
-        {"text": "Oi João, tudo bem?", "sender": "other", "name": "Dona Maria", "time": "Ontem"},
-        {"text": "Tudo sim! E você?", "sender": "me", "name": "Você", "time": "Ontem"},
-        {"text": "Que foto linda do jardim!", "sender": "other", "name": "Dona Maria", "time": "Ontem"},
-        {"text": "Que foto linda!", "sender": "me", "name": "Você", "time": "Ontem"},
-    ],
-    "m1": [
-        {"text": "Bem-vindo ao suporte!", "sender": "other", "name": "Moderador", "time": "Semana passada"},
-        {"text": "Posso ajudar com a matrícula?", "sender": "other", "name": "Moderador", "time": "Ontem"},
-    ],
-}
-
 # Rótulos amigáveis dos papéis (user_role -> texto exibido)
 ROLE_LABEL = {"senior": "Sênior", "tutor": "Tutor(a)"}
 
 # ---------------------------------------------------------------------------
-# Estado de sessão — incluindo as variáveis de integração (1.3)
+# Estado de sessão — apenas dados de navegação/identidade (seção 1.3).
+# Os dados de domínio (atividades, matrículas, mensagens) vivem no banco e são
+# acessados sob demanda via backend — não são mais duplicados na sessão.
 # ---------------------------------------------------------------------------
 def init_state():
     defaults = {
         "page": "login",
         # --- Variáveis injetadas pelo Módulo Base no login (seção 1.3) ---
-        "user_id": None,        # identificador único do usuário na sessão
+        "user_id": None,        # identificador único do usuário (id no banco)
         "user_role": None,      # 'senior' | 'tutor' — controla o roteamento de views
         "user_name": "",
-        # --- Estado das demais telas ---
+        # --- Estado de navegação das telas ---
         "selected_activity": None,
         "selected_chat": None,
-        "activities": [dict(a) for a in SEED_ACTIVITIES],  # cópia editável (tutor cria)
-        "messages": {k: list(v) for k, v in INITIAL_MESSAGES.items()},
-        "enroll_status": {},    # {activity_id: 'success' | 'waitlist'}
         "font_size": "Normal",
     }
     for k, v in defaults.items():
@@ -231,6 +203,14 @@ def is_senior() -> bool:
 
 def is_tutor() -> bool:
     return st.session_state.user_role == "tutor"
+
+def current_user() -> User:
+    """Reconstrói o usuário logado a partir das variáveis de sessão (1.3)."""
+    return User(
+        id=st.session_state.user_id,
+        name=st.session_state.user_name,
+        role=st.session_state.user_role,
+    )
 
 # ---------------------------------------------------------------------------
 # Barra de navegação inferior — adaptada ao papel (user_role)
@@ -258,7 +238,7 @@ def render_nav():
                 st.rerun()
 
 # ---------------------------------------------------------------------------
-# Tela 1 — Login (Módulo Base injeta user_id e user_role na sessão)
+# Tela 1 — Login (o backend cria/recupera o usuário; a View injeta na sessão)
 # ---------------------------------------------------------------------------
 def page_login():
     H(f"""
@@ -296,11 +276,12 @@ def page_login():
         if not nome.strip():
             st.error("Por favor, informe seu nome para entrar.")
         else:
-            # --- Injeção das variáveis de sessão (seção 1.3) ---
+            # --- Login no backend (Módulo Base) + injeção na sessão (1.3) ---
             role = "senior" if papel == "Sou Sênior" else "tutor"
-            st.session_state.user_role = role
-            st.session_state.user_id = f"{role}_{datetime.now().strftime('%H%M%S')}"
-            st.session_state.user_name = nome.strip()
+            user = backend.auth.login(nome.strip(), role)
+            st.session_state.user_id = user.id
+            st.session_state.user_role = user.role
+            st.session_state.user_name = user.name
             go("mural")
             st.rerun()
 
@@ -311,10 +292,10 @@ def page_login():
     """)
 
 # ---------------------------------------------------------------------------
-# Componente reutilizável: cartão de atividade
+# Componente reutilizável: cartão de atividade (recebe um objeto Activity)
 # ---------------------------------------------------------------------------
 def activity_card(act):
-    waitlist = act["spots"] == "Lista de Espera"
+    waitlist = not act.has_open_spots
     s_color = C["orange"] if waitlist else C["green"]
     s_bg    = C["orange_light"] if waitlist else C["green_light"]
     s_icon  = "⏳" if waitlist else "✅"
@@ -323,35 +304,35 @@ def activity_card(act):
     <div style="background:white;border-radius:22px;overflow:hidden;
                 box-shadow:0 3px 12px rgba(0,0,0,0.09);border:1px solid {C['border']};
                 margin:0 0 0.85rem;">
-      <div style="background:linear-gradient(135deg,{act['color']},{act['color']}CC);
+      <div style="background:linear-gradient(135deg,{act.color},{act.color}CC);
                   height:130px;display:flex;align-items:center;justify-content:center;
                   position:relative;">
         <span style="font-size:5rem;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.2));">
-          {act['emoji']}
+          {act.emoji}
         </span>
         <div style="position:absolute;top:12px;left:14px;background:rgba(255,255,255,0.92);
                     border-radius:99px;padding:0.2rem 0.75rem;font-size:0.85rem;
-                    font-weight:700;color:{act['color']};">
-          {act['type']}
+                    font-weight:700;color:{act.color};">
+          {act.type}
         </div>
       </div>
       <div style="padding:1.1rem 1.25rem 1.25rem;">
         <h4 style="color:{C['text_dark']};font-size:1.3rem;font-weight:700;margin:0 0 0.75rem 0;">
-          {act['title']}
+          {act.title}
         </h4>
         <div style="display:flex;align-items:center;gap:0.5rem;color:{C['text_mid']};
                     font-size:1rem;margin-bottom:0.4rem;">
           <span style="color:{C['blue']};">🕐</span>
-          <span style="color:{C['text_mid']};">{act['time']}</span>
+          <span style="color:{C['text_mid']};">{act.time}</span>
         </div>
         <div style="display:flex;align-items:center;gap:0.5rem;color:{C['text_mid']};
                     font-size:1rem;margin-bottom:0.75rem;">
           <span style="color:{C['blue']};">👤</span>
-          <span style="color:{C['text_mid']};">{act['tutor']}</span>
+          <span style="color:{C['text_mid']};">{act.tutor_name}</span>
         </div>
         <div style="background:{s_bg};border-radius:10px;padding:0.35rem 0.75rem;
                     display:inline-block;font-size:0.9rem;font-weight:600;color:{s_color};">
-          {s_icon} {act['spots']}
+          {s_icon} {act.spots_label}
         </div>
       </div>
     </div>
@@ -385,10 +366,10 @@ def _mural_senior():
     </h3>
     """)
 
-    for act in st.session_state.activities:
+    for act in backend.activities.get_available_activities():
         activity_card(act)
-        if st.button("📋  Ver Detalhes", key=f"det_{act['id']}"):
-            go("activity_detail", selected_activity=act["id"])
+        if st.button("📋  Ver Detalhes", key=f"det_{act.id}"):
+            go("activity_detail", selected_activity=act.id)
             st.rerun()
         H('<div style="height:0.4rem;"></div>')
 
@@ -424,10 +405,10 @@ def _mural_tutor():
     </h3>
     """)
 
-    for act in st.session_state.activities:
+    for act in backend.activities.get_available_activities():
         activity_card(act)
-        if st.button("⚙️  Gerenciar", key=f"mng_{act['id']}", help="ghost"):
-            go("activity_detail", selected_activity=act["id"])
+        if st.button("⚙️  Gerenciar", key=f"mng_{act.id}", help="ghost"):
+            go("activity_detail", selected_activity=act.id)
             st.rerun()
         H('<div style="height:0.4rem;"></div>')
 
@@ -462,7 +443,7 @@ def page_create_activity():
         tipo   = st.selectbox("Tipo", list(TYPE_STYLE.keys()))
         horario= st.text_input("Quando acontece?", placeholder="Ex: Segunda, 09:00")
         local  = st.text_input("Onde / Como", placeholder="Ex: Ao vivo (Vídeo)")
-        vagas  = st.selectbox("Disponibilidade", ["Vagas abertas", "Lista de Espera"])
+        vagas  = st.number_input("Número de vagas", min_value=1, max_value=200, value=10, step=1)
         desc   = st.text_area("Descrição", placeholder="Conte do que se trata a atividade...")
         publicar = st.form_submit_button("✅  Publicar Atividade")
 
@@ -471,20 +452,22 @@ def page_create_activity():
                 st.error("Informe ao menos o título da atividade.")
             else:
                 emoji, color = TYPE_STYLE.get(tipo, ("📌", C["blue"]))
-                new_act = {
-                    "id": f"new_{datetime.now().strftime('%H%M%S')}",
-                    "title": titulo.strip(),
-                    "tutor": st.session_state.user_name,  # autor = tutor logado
-                    "time": horario.strip() or "A definir",
-                    "location": local.strip() or "A definir",
-                    "type": tipo,
-                    "spots": vagas,
-                    "emoji": emoji,
-                    "color": color,
-                    "description": desc.strip() or "Sem descrição.",
-                }
-                st.session_state.activities.insert(0, new_act)
-                st.success(f"Atividade “{new_act['title']}” publicada no mural!")
+                # Requisição à camada de negócio — a View não escreve no banco.
+                new_act = backend.activities.register_new_activity(
+                    current_user(),
+                    title=titulo.strip(),
+                    type=tipo,
+                    time=horario.strip() or "A definir",
+                    location=local.strip() or "A definir",
+                    total_spots=int(vagas),
+                    emoji=emoji,
+                    color=color,
+                    description=desc.strip() or "Sem descrição.",
+                )
+                if new_act:
+                    st.success(f"Atividade “{new_act.title}” publicada no mural!")
+                else:
+                    st.error("Apenas tutores podem publicar atividades.")
 
     H('<div style="height:0.4rem;"></div>')
     if st.button("📋  Voltar ao Painel", help="ghost"):
@@ -494,8 +477,7 @@ def page_create_activity():
 # Tela 3 — Detalhe da Atividade (botão de ação depende do user_role)
 # ---------------------------------------------------------------------------
 def page_activity_detail():
-    act = next((a for a in st.session_state.activities
-                if a["id"] == st.session_state.selected_activity), None)
+    act = backend.activities.get_activity(st.session_state.selected_activity)
     if not act:
         st.error("Atividade não encontrada.")
         if st.button("← Voltar"):
@@ -506,32 +488,32 @@ def page_activity_detail():
         go("mural"); st.rerun()
 
     H(f"""
-    <div style="background:linear-gradient(135deg,{act['color']},{act['color']}BB);
+    <div style="background:linear-gradient(135deg,{act.color},{act.color}BB);
                 height:200px;display:flex;align-items:center;justify-content:center;">
-      <span style="font-size:6rem;">{act['emoji']}</span>
+      <span style="font-size:6rem;">{act.emoji}</span>
     </div>
     <div style="background:white;border-radius:28px 28px 0 0;margin-top:-1.5rem;
                 padding:1.75rem 1.5rem 0.5rem;position:relative;z-index:2;">
       <h2 style="color:{C['text_dark']};font-size:1.6rem;font-weight:800;margin:0 0 1rem 0;">
-        {act['title']}
+        {act.title}
       </h2>
     </div>
     <div style="background:{C['blue_light']};border-radius:16px;padding:1rem 1.25rem;
                 margin:0 0 1.25rem 0;">
       <div style="font-size:1.05rem;color:{C['text_mid']};margin:0.35rem 0;">
-        🕐 <b style="color:{C['text_dark']};">{act['time']}</b></div>
+        🕐 <b style="color:{C['text_dark']};">{act.time}</b></div>
       <div style="font-size:1.05rem;color:{C['text_mid']};margin:0.35rem 0;">
-        📍 <b style="color:{C['text_dark']};">{act['location']}</b></div>
+        📍 <b style="color:{C['text_dark']};">{act.location}</b></div>
       <div style="font-size:1.05rem;color:{C['text_mid']};margin:0.35rem 0;">
-        👤 <b style="color:{C['text_dark']};">Professor: {act['tutor']}</b></div>
+        👤 <b style="color:{C['text_dark']};">Professor: {act.tutor_name}</b></div>
       <div style="font-size:1.05rem;color:{C['text_mid']};margin:0.35rem 0;">
-        🎟️ <b style="color:{C['text_dark']};">{act['spots']}</b></div>
+        🎟️ <b style="color:{C['text_dark']};">{act.spots_label}</b></div>
     </div>
     <h3 style="color:{C['text_dark']};font-size:1.2rem;font-weight:700;margin:0 0 0.4rem 0;">
       Sobre a atividade
     </h3>
     <p style="color:{C['text_mid']};font-size:1.05rem;line-height:1.65;margin:0 0 1.25rem 0;">
-      {act['description']}
+      {act.description}
     </p>
     """)
 
@@ -543,10 +525,10 @@ def page_activity_detail():
 
 def _detail_actions_senior(act):
     """Sênior: pode realizar matrícula / entrar na lista de espera."""
-    status   = st.session_state.enroll_status.get(act["id"], "idle")
-    waitlist = act["spots"] == "Lista de Espera"
+    user = current_user()
+    status = backend.activities.get_enrollment_status(user.id, act.id)
 
-    if status == "success":
+    if status == "enrolled":
         H(f"""
         <div style="background:{C['green_light']};border:2px solid {C['green']};
                     border-radius:16px;padding:1rem 1.25rem;margin-bottom:1rem;">
@@ -557,7 +539,7 @@ def _detail_actions_senior(act):
         """)
         # Permite desfazer a matrícula
         if st.button("❌  Cancelar Matrícula", help="red"):
-            st.session_state.enroll_status.pop(act["id"], None)
+            backend.activities.cancel_enrollment(user, act)
             st.rerun()
         H('<div style="height:0.3rem;"></div>')
         if st.button("🏠  Voltar para o Início", help="ghost"):
@@ -574,19 +556,19 @@ def _detail_actions_senior(act):
         """)
         # Permite sair da lista de espera
         if st.button("❌  Sair da Lista de Espera", help="red"):
-            st.session_state.enroll_status.pop(act["id"], None)
+            backend.activities.cancel_enrollment(user, act)
             st.rerun()
         H('<div style="height:0.3rem;"></div>')
         if st.button("🏠  Voltar para o Início", help="ghost"):
             go("mural"); st.rerun()
 
     else:
-        if waitlist:
+        if not act.has_open_spots:
             if st.button("⏳  Entrar na Lista de Espera", help="orange"):
-                st.session_state.enroll_status[act["id"]] = "waitlist"; st.rerun()
+                backend.activities.add_to_queue(user, act); st.rerun()
         else:
             if st.button("✅  Realizar Matrícula"):
-                st.session_state.enroll_status[act["id"]] = "success"; st.rerun()
+                backend.activities.enroll(user, act); st.rerun()
         # Permite voltar ao mural sem se matricular
         H('<div style="height:0.3rem;"></div>')
         if st.button("🏠  Voltar para o Início", help="ghost"):
@@ -594,18 +576,18 @@ def _detail_actions_senior(act):
 
 def _detail_actions_tutor(act):
     """Tutor: não se matricula; vê painel de gestão da atividade."""
+    report = backend.activities.make_activity_report(act)
     H(f"""
     <div style="background:{C['teal_light']};border:2px solid {C['teal']};
                 border-radius:16px;padding:1rem 1.25rem;margin-bottom:1rem;">
       <b style="color:{C['teal']};font-size:1.1rem;">👨‍🏫 Você está gerenciando esta atividade</b><br>
       <span style="color:#115E59;font-size:1rem;">
-        Participantes inscritos: 0 · Status: {act['spots']}</span>
+        Participantes inscritos: {report.enrolled_count} ·
+        Lista de espera: {report.waitlist_count} · Status: {act.spots_label}</span>
     </div>
     """)
     if st.button("🗑️  Remover Atividade", help="red"):
-        st.session_state.activities = [
-            a for a in st.session_state.activities if a["id"] != act["id"]
-        ]
+        backend.activities.delete_activity(current_user(), act.id)
         go("mural"); st.rerun()
     H('<div style="height:0.3rem;"></div>')
     if st.button("📋  Voltar ao Painel", help="ghost"):
@@ -622,14 +604,14 @@ def page_chat_list():
     </div>
     """)
 
-    for chat in CHATS:
+    for chat in backend.chat.get_conversations():
         unread_html = ""
-        if chat["unread"] > 0:
+        if chat.unread > 0:
             unread_html = (f'<span style="background:{C["blue"]};color:white;border-radius:99px;'
                            f'padding:0.1rem 0.55rem;font-size:0.85rem;font-weight:700;'
-                           f'margin-left:0.4rem;">{chat["unread"]}</span>')
-        last_weight = "700" if chat["unread"] > 0 else "400"
-        av_bg = "#FEF2F2" if chat["type"] == "support" else C["blue_light"]
+                           f'margin-left:0.4rem;">{chat.unread}</span>')
+        last_weight = "700" if chat.unread > 0 else "400"
+        av_bg = "#FEF2F2" if chat.type == "support" else C["blue_light"]
 
         H(f"""
         <div style="background:white;border-radius:18px;padding:1rem 1.25rem;
@@ -637,24 +619,24 @@ def page_chat_list():
                     border:1px solid {C['border']};display:flex;align-items:center;gap:1rem;">
           <div style="width:60px;height:60px;border-radius:50%;background:{av_bg};
                       display:flex;align-items:center;justify-content:center;
-                      font-size:1.9rem;flex-shrink:0;">{chat['emoji']}</div>
+                      font-size:1.9rem;flex-shrink:0;">{chat.emoji}</div>
           <div style="flex:1;min-width:0;">
             <div style="display:flex;justify-content:space-between;align-items:center;
                         margin-bottom:0.2rem;">
               <span style="color:{C['text_dark']};font-size:1.1rem;font-weight:700;">
-                {chat['name']}</span>
+                {chat.name}</span>
               <span style="color:{C['text_muted']};font-size:0.85rem;">
-                {chat['time']}{unread_html}</span>
+                {chat.last_time}{unread_html}</span>
             </div>
             <span style="color:{C['text_muted']};font-size:0.95rem;font-weight:{last_weight};
                          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;">
-              {chat['last']}</span>
+              {chat.last_message}</span>
           </div>
         </div>
         """)
 
-        if st.button("Abrir conversa →", key=f"open_{chat['id']}"):
-            go("chat_room", selected_chat=chat["id"])
+        if st.button("Abrir conversa →", key=f"open_{chat.id}"):
+            go("chat_room", selected_chat=chat.id)
             st.rerun()
         H('<div style="height:0.3rem;"></div>')
 
@@ -664,7 +646,7 @@ def page_chat_list():
 # Tela 5 — Sala de Chat
 # ---------------------------------------------------------------------------
 def page_chat_room():
-    chat = next((c for c in CHATS if c["id"] == st.session_state.selected_chat), None)
+    chat = backend.chat.get_conversation(st.session_state.selected_chat)
     if not chat:
         if st.button("← Voltar"):
             go("chat_list"); st.rerun()
@@ -673,8 +655,8 @@ def page_chat_room():
     H(f"""
     <div style="background:{C['blue']};padding:1.1rem 1.5rem;border-radius:0 0 20px 20px;
                 margin-bottom:0.75rem;display:flex;align-items:center;gap:0.75rem;">
-      <span style="font-size:2rem;">{chat['emoji']}</span>
-      <span style="color:white;font-size:1.4rem;font-weight:700;">{chat['name']}</span>
+      <span style="font-size:2rem;">{chat.emoji}</span>
+      <span style="color:white;font-size:1.4rem;font-weight:700;">{chat.name}</span>
     </div>
     """)
 
@@ -683,35 +665,35 @@ def page_chat_room():
 
     H('<div style="background:#E8EEF5;border-radius:16px;padding:0.75rem;margin:0.5rem 0;">')
 
-    is_group = chat["type"] == "group"
-    for msg in st.session_state.messages.get(chat["id"], []):
-        if msg["sender"] == "me":
+    is_group = chat.type == "group"
+    for msg in backend.chat.get_messages(chat.id):
+        if msg.sender == "me":
             H(f"""
             <div style="background:#D1FAE5;border-radius:18px 18px 4px 18px;
                         padding:0.7rem 1rem;margin:0.4rem 0 0.4rem 3rem;
                         box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-              <span style="color:{C['text_dark']};font-size:1.05rem;">{msg['text']}</span>
+              <span style="color:{C['text_dark']};font-size:1.05rem;">{msg.text}</span>
               <div style="color:{C['text_muted']};font-size:0.75rem;text-align:right;
-                          margin-top:0.2rem;">{msg['time']}</div>
+                          margin-top:0.2rem;">{msg.time}</div>
             </div>
             """)
         else:
             sender = (f'<div style="color:{C["blue"]};font-size:0.85rem;font-weight:700;'
-                      f'margin-bottom:0.15rem;">{msg["name"]}</div>' if is_group else "")
+                      f'margin-bottom:0.15rem;">{msg.sender_name}</div>' if is_group else "")
             H(f"""
             <div style="background:white;border-radius:18px 18px 18px 4px;
                         padding:0.7rem 1rem;margin:0.4rem 3rem 0.4rem 0;
                         box-shadow:0 1px 4px rgba(0,0,0,0.08);">
               {sender}
-              <span style="color:{C['text_dark']};font-size:1.05rem;">{msg['text']}</span>
+              <span style="color:{C['text_dark']};font-size:1.05rem;">{msg.text}</span>
               <div style="color:{C['text_muted']};font-size:0.75rem;text-align:right;
-                          margin-top:0.2rem;">{msg['time']}</div>
+                          margin-top:0.2rem;">{msg.time}</div>
             </div>
             """)
 
     H('</div>')
 
-    with st.form(key=f"form_{chat['id']}", clear_on_submit=True):
+    with st.form(key=f"form_{chat.id}", clear_on_submit=True):
         col_in, col_btn = st.columns([5, 1])
         with col_in:
             text = st.text_input("msg", placeholder="Digite aqui...",
@@ -719,9 +701,7 @@ def page_chat_room():
         with col_btn:
             send = st.form_submit_button("📤")
         if send and text.strip():
-            now = datetime.now().strftime("%H:%M")
-            st.session_state.messages[chat["id"]].append(
-                {"text": text.strip(), "sender": "me", "name": "Você", "time": now})
+            backend.chat.send_message(chat.id, text, sender_name="Você")
             st.rerun()
 
 # ---------------------------------------------------------------------------
@@ -772,7 +752,10 @@ def page_profile():
     st.text_input("Nova senha (opcional)", type="password", placeholder="••••••••")
 
     if st.button("💾  Salvar Alterações"):
-        st.session_state.user_name = new_name.strip() or nome
+        # Atualização persistida via camada de negócio.
+        updated = backend.auth.update_name(st.session_state.user_id, (new_name or "").strip() or nome)
+        if updated:
+            st.session_state.user_name = updated.name
         st.success("✅ Dados atualizados com sucesso!")
 
     H('<div style="height:0.5rem;"></div>')
